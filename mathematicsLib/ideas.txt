@@ -1,0 +1,60 @@
+### Basico:
+ * Soma
+ * Subtracao
+ * Multiplicacao
+ * Divisap
+ * Potencia
+ * Raiz quadrada
+ * Porcentagem
+ * Regra de tres simples
+ * Fatorial
+ * MDC
+ * MMC
+
+------------------------------
+### Algebra
+ * Equacao do 1 grau
+ * Equacao do 2 grau
+ * Sistema linear 2x2
+ * Delta
+ * Soma de PA
+ * Soma de PG
+ * Produto notavel
+ * Valor absoluto
+ * Polinomio
+ * Forma canonica da parabola
+-----------------------------
+### Geometria
+
+ * Areas:
+  - Circulo
+  - Triangulo
+  - Retangulo
+  - Trapezio
+  - Losango
+
+ * Volumes
+  - Esfera
+  - Cilindro
+  - Cone
+  - Paralelepipedo
+
+
+ * Outros
+  - Pitagoras
+  - Distancia entre dois pontos
+  - Perimetro
+  - Comprimento da circunferencia(Perimetro?)
+------------------------------
+### Estatistica
+
+ * Media aritmetica
+ * Media ponderada
+ * Mediana
+ * Moda
+ * Variancia
+ * Desvio padrao
+ * Coeficiente de variacao
+ * Regrassao linear simples
+ * Correlacao
+
