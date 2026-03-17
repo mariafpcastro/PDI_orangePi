@@ -1,157 +1,184 @@
-import espProtocol as ep
-import serial
+"""
+espCRCtry.py
+
+Command-line interface for sending protocol commands to an ESP32 over serial
+and receiving / validating the response frame.
+"""
+
 import time
+import serial
+import espProtocol as ep
+from espProtocol.peripherals.gpio import gpio_config_payload
 
-#   Inicializando a porta serial 
-ser = serial.Serial("/dev/ttyUSB0", 1_000_000, timeout=1)
-time.sleep(1)
- 
- 
-#   Escolhendo o comando pelo terminal
-print('Vamos enviar comandos para a Esp! Primeiro, me diga o tipo de mensagem')
- 
-while(1):
-    print('1. Configuracao')
-    print('2. Leitura')
-    print('3. Escrita')
-    print('4. Evento')
-    type = int(input('Insira apenas o numero do evento! '))
- 
-    if (type == 1):
-        type_msg = ep.TYPE_CONFIG
-        break
-    elif (type == 2):
-        type_msg = ep.TYPE_READ
-        break
-    elif (type == 3):
-        type_msg = ep.TYPE_WRITE
-        break
-    elif (type == 4):
-        type_msg = ep.TYPE_EVENT
-        break
+
+# --- User input helpers ---
+
+def select_type() -> int:
+    """
+    Prompt the user to select a message type.
+
+    Returns:
+        int: Selected message type constant (e.g. ep.TYPE_WRITE).
+    """
+    options = {
+        1: ep.TYPE_CONFIG,
+        2: ep.TYPE_READ,
+        3: ep.TYPE_WRITE,
+        4: ep.TYPE_EVENT,
+    }
+    print("\nMessage type:")
+    print("  1. Config   2. Read   3. Write   4. Event")
+    while True:
+        choice = int(input("Select: "))
+        if choice in options:
+            return options[choice]
+        print("Invalid value, please try again.")
+
+
+def select_peripheral() -> int:
+    """
+    Prompt the user to select a target peripheral.
+
+    Returns:
+        int: Selected peripheral constant (e.g. ep.PERIPHERAL_GPIO).
+    """
+    options = {
+        1: ep.PERIPHERAL_GPIO,
+        2: ep.PERIPHERAL_DAC,
+        3: ep.PERIPHERAL_MODBUS,
+        4: ep.PERIPHERAL_SYS,
+    }
+    print("\nPeripheral:")
+    print("  1. GPIO   2. DAC   3. Modbus   4. System/Global")
+    while True:
+        choice = int(input("Select: "))
+        if choice in options:
+            return options[choice]
+        print("Invalid value, please try again.")
+
+
+def select_gpio_config() -> int:
+    """
+    Prompt the user to select a GPIO configuration byte
+    using the CONFIG_* constants from constants.py.
+
+    Returns:
+        int: Selected CONFIG_* constant.
+    """
+    print("\nDirection:")
+    print("  1. Output   2. Input")
+    direction = int(input("Select: "))
+
+    if direction == 1:
+        print("\nResistor:")
+        print("  1. Open-drain   2. Push-pull")
+        resistor = int(input("Select: "))
+        print("\nLevel:")
+        print("  1. High   2. Low")
+        level = int(input("Select: "))
+        table = {
+            (1, 1): ep.CONFIG_OUT_OD_HIGH,
+            (2, 1): ep.CONFIG_OUT_PP_HIGH,
+            (1, 2): ep.CONFIG_OUT_OD_LOW,
+            (2, 2): ep.CONFIG_OUT_PP_LOW,
+        }
+        return table[(resistor, level)]
+
     else:
-        print('Por favor, insira um valor valido!')
- 
-print('Agora, escolha o periferico a ser comandado')
-while (1):
-    print('1. GPIO')
-    print('2. DAC')
-    print('3. Modbus')
-    print('4. Sistema/Global')
-    per = int(input('Insira apenas o numero do evento! '))
-    if per == 1:
-        per_msg = ep.PERIPHERAL_GPIO
-        break
-    elif per == 2:
-        per_msg = ep.PERIPHERAL_DAC
-        break
-    elif per == 3:
-        per_msg = ep.PERIPHERAL_MODBUS
-        break
-    elif per == 4:
-        per_msg = ep.PERIPHERAL_SYS
-        break
+        print("\nInterrupt:")
+        print("  1. No interrupt   2. With interrupt")
+        interrupt = int(input("Select: "))
+        print("\nResistor:")
+        print("  1. Pull-up   2. Pull-down   3. No-pull")
+        resistor = int(input("Select: "))
+
+        if interrupt == 1:
+            table = {
+                1: ep.CONFIG_IN_NI_PU,
+                2: ep.CONFIG_IN_NI_PD,
+                3: ep.CONFIG_IN_NI_NP,
+            }
+            return table[resistor]
+
+        else:
+            print("\nTrigger:")
+            print("  1. Rising   2. Falling   3. Both")
+            trigger = int(input("Select: "))
+            table = {
+                (1, 1): ep.CONFIG_IN_WI_PU_R,
+                (1, 2): ep.CONFIG_IN_WI_PU_F,
+                (1, 3): ep.CONFIG_IN_WI_PU_B,
+                (2, 1): ep.CONFIG_IN_WI_PD_R,
+                (2, 2): ep.CONFIG_IN_WI_PD_F,
+                (2, 3): ep.CONFIG_IN_WI_PD_B,
+                (3, 1): ep.CONFIG_IN_WI_NP_R,
+                (3, 2): ep.CONFIG_IN_WI_NP_F,
+                (3, 3): ep.CONFIG_IN_WI_NP_B,
+            }
+            return table[(resistor, trigger)]
+
+
+def build_payload(per_msg: int, type_msg: int) -> bytes:
+    """
+    Build the payload bytes based on the selected peripheral and message type.
+
+    Args:
+        per_msg  (int): Selected peripheral constant.
+        type_msg (int): Selected message type constant.
+
+    Returns:
+        bytes: Payload ready to pass to build_packet().
+    """
+    if per_msg == ep.PERIPHERAL_GPIO and type_msg == ep.TYPE_CONFIG:
+        pin = int(input("Pin number: "))
+        config = select_gpio_config()
+        return gpio_config_payload(pin, config)
+
+    elif per_msg == ep.PERIPHERAL_GPIO and type_msg == ep.TYPE_WRITE:
+        pin   = int(input("Pin number: "))
+        level = int(input("Level (0 = OFF, 1 = ON): "))
+        return bytes([pin, level])
+
     else:
-        print('Por favor, insira um valor valido!')
- 
-payl = []
-if per_msg == ep.PERIPHERAL_GPIO and type_msg == ep.TYPE_CONFIG:
-    size = 2
-    payl.append(int(input("Insira o pino que deseja comandar: ")))
-    print("")
-    print("Agora vamos configurar!")
-    print("1. Saida")
-    print("2. Entrada")
-    Direcao = int(input("Escolha a direcao do pino: "))
-    print("")
-    if Direcao == 1:
-        print("Tipo de resistor:")
-        print("1. Open-drain")
-        print("2. Push-pull")
-        Resistor = int(input("Selecione o tipo de resistor: "))
-        print("Nivel")
-        print("1. High")
-        print("2. Low")
-        Trigger = int(input("Selecione o Trigger: "))
-        if Resistor == 1 and Trigger == 1:
-            indice = 1
-        elif Resistor == 2 and Trigger == 1:
-            indice = 2
-        elif Resistor == 1 and Trigger == 2:
-            indice = 3
-        elif Resistor == 2 and Trigger == 2:
-            indice = 4
- 
-    elif Direcao == 2:
-        print("1. Sem interrupcao")
-        print("2. Com interrupcao")
-        Interrupcao = int(input("Selecione se há interrupcao ou nao: "))
-        print("Tipo de resistor:")
-        print("1. Pull-up")
-        print("2. Pull-down")
-        print("3. No-pull")
-        Resistor = int(input("Selecione o tipo de resistor: "))
-        print("Nivel")
-        print("1. Rising")
-        print("2. Falling")
-        print("3. Both")
-        Trigger = int(input("Selecione o Nivel: "))
-        if Interrupcao == 1 and Resistor == 1:
-            indice = 5
-        elif Interrupcao == 1 and Resistor == 2:
-            indice = 6
-        elif Interrupcao == 1 and Resistor == 3:
-            indice = 7
-        elif Interrupcao == 2 and Resistor == 1 and Trigger == 1:
-            indice = 8
-        elif Interrupcao == 2 and Resistor == 1 and Trigger == 2:
-            indice = 9
-        elif Interrupcao == 2 and Resistor == 1 and Trigger == 3:
-            indice = 10
-        elif Interrupcao == 2 and Resistor == 2 and Trigger == 1:
-            indice = 11
-        elif Interrupcao == 2 and Resistor == 2 and Trigger == 2:
-            indice = 12
-        elif Interrupcao == 2 and Resistor == 2 and Trigger == 3:
-            indice = 13
-        elif Interrupcao == 2 and Resistor == 3 and Trigger == 1:
-            indice = 14
-        elif Interrupcao == 2 and Resistor == 3 and Trigger == 2:
-            indice = 15
-        elif Interrupcao == 2 and Resistor == 3 and Trigger == 3:
-            indice = 16
- 
-    payl.append(indice)
-elif per_msg == ep.PERIPHERAL_GPIO and type_msg == ep.TYPE_WRITE:
-    size = 2
-    payl.append(int(input("Insira o pino que deseja comandar: ")))
-    payl.append(int(input("Insira 0 para LED OFF e 1 para LED ON: ")))
-else:
-    size = int(input('Insira o tamanho do seu Payload: '))
-    i = 0
-    while i < size:
-        payl.append(int(input(f'Insira o termo {i+1} do seu payload ')))
-        i += 1
- 
-payload = bytearray(payl)
+        size = int(input("Payload size: "))
+        return bytes(int(input(f"Byte {i + 1}: ")) for i in range(size))
 
-#   Printa cada parte do pacote
-print('Start: ', ep.START)
-print('Type: ', type_msg)
-print('Peripheral: ', per_msg)
-print('Size: ', size)
-print('payload: ', payload)
 
-#   Faz o pacote completo em byte, ja com o crc 
-pacote = ep.build_packet(type_msg, per_msg, payload)
+# --- Main ---
 
-#   Imprime o pacote que sera enviado
-ep.print_packet(pacote)
+def main():
+    ser = serial.Serial("/dev/ttyUSB0", 1_000_000, timeout=1)
+    time.sleep(1)
 
-#   Envia o pacote para a ESP
-ser.write(pacote)
- 
+    type_msg = select_type()
+    per_msg  = select_peripheral()
+    payload  = build_payload(per_msg, type_msg)
 
-print("Aguardando resposta da ESP...")
- 
-ep.parse_packet()
+    # Build and send packet
+    packet = ep.build_packet(type_msg, per_msg, payload)
+    ep.print_packet(packet)
+    ser.write(packet)
+
+    # Receive and validate response
+    print("\nWaiting for ESP32 response...")
+    raw = ep.read_frame(ser)
+
+    if raw is None:
+        print("Timeout — no response received.")
+        return
+
+    if not ep.check_packet(raw):
+        print("CRC error — corrupted frame.")
+        return
+
+    frame = ep.parse_packet(raw)
+    ep.print_frame(frame)
+
+    # Interpret GPIO response
+    if per_msg == ep.PERIPHERAL_GPIO and frame["size"] >= 2:
+        from espProtocol.peripherals.gpio import gpio_read
+        gpio_read(type_msg, frame["payload"])
+
+
+if __name__ == "__main__":
+    main()

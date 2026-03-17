@@ -1,6 +1,3 @@
-from . import constants
-from . import packet
-
 """
 crc.py
 
@@ -18,17 +15,18 @@ This implementation is commonly used in communication protocols
 based on the CCITT standard.
 """
 
+from . import constants
 
-def crc_calc(data):
+def crc_calc(data) -> int:
 	#Docstrings
 	"""
-	Computes the CRC-16 using the CRC-16/CCITT-FALSE standard.
+	Compute the CRC-16 checksum using the CRC-16/CCITT-FALSE algorithm.
 
 	Args:
-		data (list[int] | bytes): Data used to compute the CRC.
+		data (list[int] | bytes): Sequence of bytes to checksum.
 	
 	Returns
-		int: The computed CRC-16 value (16 bits).
+		int: Computed CRC-16 value (16 bits).
 	"""
 
 	crc = constants.CRCBEGIN
