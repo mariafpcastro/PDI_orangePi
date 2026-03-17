@@ -13,5 +13,28 @@ PERIPHERAL_DAC = 0x02
 PERIPHERAL_MODBUS = 0x03
 PERIPHERAL_SYS = 0xFF
 
+'''
+CONFIG = configurating payload
+OUT/IN =  direction
+NI: no interrupting, WI: with interrupting
+OD: open-drain, PP: push-pull, PU: pull-up, PU: pull-down, NP: no-pull = resistor
+HIGH, LOW, R: Rising, F: Falling, B: Both = Nivel/Trigger'''
+CONFIG_OUT_OD_HIGH = 0x01
+CONFIG_OUT_PP_HIGH = 0X02
+CONFIG_OUT_OD_LOW = 0x03
+CONFIG_OUT_PP_LOW = 0x04
+CONFIG_IN_NI_PU = 0x05
+CONFIG_IN_NI_PD = 0x06
+CONFIG_IN_NI_NP = 0x07
+CONFIG_IN_WI_PU_R = 0x08
+CONFIG_IN_WI_PU_F = 0x09
+CONFIG_IN_WI_PU_B = 0x0A
+CONFIG_IN_WI_PD_R = 0x0B
+CONFIG_IN_WI_PD_F = 0x0C
+CONFIG_IN_WI_PD_B = 0x0D
+CONFIG_IN_WI_NP_R = 0x0E
+CONFIG_IN_WI_NP_F = 0x0F
+CONFIG_IN_WI_NP_B = 0x10
+
 STATUS_OK = 0x00
 STATUS_FAIL = 0xFF

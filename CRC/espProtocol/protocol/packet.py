@@ -19,6 +19,7 @@ The CRC is calculated over all bytes from START to the last byte of PAYLOAD.
 from . import constants
 from . import crc
 from .. import utils
+import serial, time
 
 def build_packet(msg_type: int, peripheral: int, payload: bytes = b"") -> bytes:
     #Docstring
@@ -47,26 +48,56 @@ def build_packet(msg_type: int, peripheral: int, payload: bytes = b"") -> bytes:
 
     return packet
 
-def parse_packet(data):
-    
-    dados = data.split(" ")
-    print (dados)
+def parse_packet():
+    ser = serial.Serial("/dev/ttyUSB0", 1_000_000, timeout=1)
+    time.sleep(1)
 
-    start = dados[0]
-    type = dados[1]
-    peripheral = dados[2]
-    size = int(dados[3])
-    i=0
-    payload = []
-    while i<size:
-        payload.append( dados[4+i])
-        i += 1 
-
-    print("START: ", start)
-    print("TYPE: ", type)
-    print("PERIPHERAL: ", peripheral)
-    print("SIZE: ", size)
-    print("PAYLOAD: ", payload)
+    start_byte = b''
+    while True:
+        start_byte = ser.read(1)
+        if not start_byte:
+            break
+        if start_byte[0] == 0xAA:
+            break
+ 
+    if not start_byte or start_byte[0] != 0xAA:
+        print("Nenhuma resposta recebida (timeout aguardando START 0xAA)")
+ 
+    # Lê TYPE, PERIPHERAL e SIZE (3 bytes restantes do cabeçalho)
+    cabecalho = ser.read(3)
+ 
+    if len(cabecalho) < 3:
+        print("Nenhuma resposta recebida (timeout no cabecalho)")
+    else:
+        type_resp   = cabecalho[0]
+        periph_resp = cabecalho[1]
+        size_resp   = cabecalho[2]
+ 
+        corpo = ser.read(size_resp + 2)  # payload + 2 bytes de CRC
+ 
+        if len(corpo) < size_resp + 2:
+            print("Resposta incompleta (timeout no corpo)")
+        else:
+            payload_resp = corpo[:size_resp]
+            crc_resp     = corpo[size_resp:]
+ 
+            print("--- Resposta recebida ---")
+            print(f"START:      0xAA")
+            print(f"TYPE:       0x{type_resp:02X}")
+            print(f"PERIPHERAL: 0x{periph_resp:02X}")
+            print(f"SIZE:       {size_resp}")
+            print(f"PAYLOAD:    {payload_resp.hex(' ').upper()}")
+            print(f"CRC:        {crc_resp.hex(' ').upper()}")
+ 
+            # Verifica o status retornado pela ESP32 (payload[1] = 0x00 OK / 0xFF erro)
+            if size_resp >= 2:
+                status = payload_resp[1]
+                if status == 0x00:
+                    print("Status: OK")
+                elif status == 0xFF:
+                    print("Status: ERRO (ESP32 recusou o comando)")
+                else:
+                    print(f"Status: 0x{status:02X} (nivel lido)")
 
 
 def check_packet(data):
