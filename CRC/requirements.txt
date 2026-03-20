@@ -1,0 +1,4 @@
+python-periphery>=2.4.0
+requests>=2.28.0
+# Adicione outras libs abaixo
+pyserial>=3.5

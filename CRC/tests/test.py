@@ -7,8 +7,13 @@ and receiving / validating the response frame.
 
 import time
 import serial
-import espProtocol as ep
-from espProtocol.peripherals.gpio import gpio_config_payload
+import sys
+import os
+
+# add the parent directory to the path so espProtocol can be found
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import QAT as ep
+
 
 
 # --- User input helpers ---
@@ -132,11 +137,12 @@ def build_payload(per_msg: int, type_msg: int) -> bytes:
     if per_msg == ep.PERIPHERAL_GPIO and type_msg == ep.TYPE_CONFIG:
         pin = int(input("Pin number: "))
         config = select_gpio_config()
-        return gpio_config_payload(pin, config)
+        return ep.gpio_config_write_payload(pin, config)
 
     elif per_msg == ep.PERIPHERAL_GPIO and type_msg == ep.TYPE_WRITE:
         pin   = int(input("Pin number: "))
         level = int(input("Level (0 = OFF, 1 = ON): "))
+        
         return bytes([pin, level])
 
     else:
@@ -165,19 +171,15 @@ def main():
 
     if raw is None:
         print("Timeout — no response received.")
-        return
-
-    if not ep.check_packet(raw):
+    elif not ep.check_packet(raw):
         print("CRC error — corrupted frame.")
-        return
+    else:
+        frame = ep.parse_packet(raw)
+        ep.print_frame(frame)
 
-    frame = ep.parse_packet(raw)
-    ep.print_frame(frame)
-
-    # Interpret GPIO response
-    if per_msg == ep.PERIPHERAL_GPIO and frame["size"] >= 2:
-        from espProtocol.peripherals.gpio import gpio_read
-        gpio_read(type_msg, frame["payload"])
+        # Interpret GPIO response
+        if per_msg == ep.PERIPHERAL_GPIO and frame["size"] >= 2:
+            ep.gpio_read(type_msg, frame["payload"])
 
 
 if __name__ == "__main__":

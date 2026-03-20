@@ -7,25 +7,28 @@ Utilities for building and interpreting GPIO protocol messages.
 from ..protocol import constants as c
 
 
-def gpio_config_payload(pin: int, config: int) -> bytes:
+def gpio_config_write_payload(pin: int, value: int) -> bytes:
     """
-    Build the payload bytes for a GPIO configuration command.
+    Build the payload bytes for a GPIO configuration or write command.
 
-    The config byte should be one of the CONFIG_* constants
-    defined in constants.py (e.g. CONFIG_OUT_PP_HIGH).
+    The meaning of the message depends on the message type being sent:
+
+        TYPE_CONFIG - value should be one of the CONFIG_* constants
+                      defined in constants.py
+                      e.g. gpio_config_write_payload(4, c.CONFIG_OUT_PP_HIGH)
+        
+        TYPE_WRITE  - value shoul be the output level:
+                      0 = LOW , 1 = HIGH.
+                      e.g. gpio_config_write_payload(4, 1)
 
     Args:
-        pin    (int): GPIO pin number.
-        config (int): Configuration byte (e.g. c.CONFIG_OUT_PP_HIGH).
+        pin   (int): GPIO pin number.
+        value (int): Configuration byte (CONFIG_*) or output level (0/1).
 
     Returns:
         bytes: 2-byte payload ready to pass to build_packet().
-
-    Example:
-        >>> gpio_config_payload(10, c.CONFIG_OUT_PP_HIGH)
-        b'\\x0a\\x02'
     """
-    return bytes([pin, config])
+    return bytes([pin, value])
 
 
 def gpio_read(msg_type: int, payload: bytes) -> None:
