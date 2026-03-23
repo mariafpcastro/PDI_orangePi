@@ -7,11 +7,7 @@ and receiving / validating the response frame.
 
 import time
 import serial
-import sys
-import os
 
-# add the parent directory to the path so espProtocol can be found
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import QAT as ep
 
 

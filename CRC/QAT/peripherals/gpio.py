@@ -5,6 +5,8 @@ Utilities for building and interpreting GPIO protocol messages.
 """
 
 from ..protocol import constants as c
+import serial, time
+import QAT
 
 
 def gpio_config_write_payload(pin: int, value: int) -> bytes:
@@ -42,10 +44,15 @@ def gpio_read(msg_type: int, payload: bytes) -> None:
     Returns:
         None
     """
+
+    if len(payload) < 2:
+        print(f"GPIO response error - payload too short ({len(payload)} byte(s)).")
+        return
+    
     pin = payload[0]
     status = payload[1]
 
-    if msg_type in (c.TYPE_CONFIG, c.TYPE_EVENT, c.TYPE_WRITE):
+    if msg_type in (c.TYPE_CONFIG, c.TYPE_WRITE):
         if status == c.STATUS_OK:
             print(f"GPIO {pin} configured successfully.")
         elif status == c.STATUS_FAIL:
@@ -53,10 +60,103 @@ def gpio_read(msg_type: int, payload: bytes) -> None:
         else:
             print(f"GPIO {pin} unknown status: 0x{status:02X}")
 
-    elif msg_type == c.TYPE_READ:
+    elif msg_type in (c.TYPE_READ, c.TYPE_EVENT) :
         if status == 0x01:
             print(f"GPIO {pin} — logic level HIGH")
         elif status == 0x00:
             print(f"GPIO {pin} — logic level LOW")
         else:
             print(f"GPIO {pin} unknown level: 0x{status:02X}")
+
+def gpio_check(packet, MAX_RETRIES, type_msg):
+    ser = serial.Serial("/dev/ttyUSB0", 1_000_000, timeout=1)
+    time.sleep(1)
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        print(f"Attempt {attempt}/{MAX_RETRIES}...")
+        ser.write(packet)
+        raw = QAT.read_frame(ser)
+
+        if raw is None:
+            print("Timeout — no response received.")
+            continue
+
+        if not QAT.check_packet(raw):
+            print("CRC error — corrupted frame. Retrying...")
+            continue
+
+        frame = QAT.parse_packet(raw)
+        QAT.print_frame(frame)
+
+        if frame["type"] == QAT.TYPE_ERROR:
+            print("ESP32 returned an error frame. Retrying...")
+            continue
+
+        if frame["size"] >= 2 and frame["payload"][1] == QAT.STATUS_FAIL:
+            print("ESP32 reported failure. Retrying...")
+            continue
+
+        if frame["size"] >= 2:
+            QAT.gpio_read(type_msg, frame["payload"])
+        break
+
+    else:
+        print(f"Failed after {MAX_RETRIES} attempts.")
+
+    ser.close()
+
+# def gpio_check(packet, MAX_RETRIES, type_msg):
+#     ser = serial.Serial("/dev/ttyUSB0", 1_000_000, timeout=1)
+#     time.sleep(1)
+
+#     1. Envia a configuração com retry
+#     configured = False
+#     for attempt in range(1, MAX_RETRIES + 1):
+#         print(f"Config attempt {attempt}/{MAX_RETRIES}...")
+#         ser.write(packet)
+#         raw = QAT.read_frame(ser)
+
+#         if raw is None:
+#             print("Timeout — no response received.")
+#             continue
+#         if not QAT.check_packet(raw):
+#             print("CRC error — corrupted frame. Retrying...")
+#             continue
+
+#         frame = QAT.parse_packet(raw)
+#         QAT.print_frame(frame)
+
+#         if frame["type"] == QAT.TYPE_ERROR:
+#             print("ESP32 returned an error frame. Retrying...")
+#             continue
+#         if frame["size"] >= 2 and frame["payload"][1] == QAT.STATUS_FAIL:
+#             print("ESP32 reported failure. Retrying...")
+#             continue
+
+#         print("Configured! Listening for events...")
+#         configured = True
+#         break
+
+#     if not configured:
+#         print(f"Failed to configure after {MAX_RETRIES} attempts.")
+#         ser.close()
+#         return
+
+#     2. Fica escutando eventos indefinidamente
+#     try:
+#         while True:
+#             raw = QAT.read_frame(ser)
+#             if raw is None:
+#                 continue  # timeout normal, continua esperando
+#             if not QAT.check_packet(raw):
+#                 print("CRC error — corrupted frame.")
+#                 continue
+
+#             frame = QAT.parse_packet(raw)
+#             if frame["size"] >= 2:
+#                 QAT.gpio_read(type_msg, frame["payload"])
+
+#     except KeyboardInterrupt:
+#         print("\nStopped by user.")
+#     finally:
+#         ser.close()

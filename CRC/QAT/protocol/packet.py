@@ -16,8 +16,7 @@ Frame structure:
 The CRC covers all bytes from START trought the last PAYLOAD byte.
 """
 
-from . import constants
-from . import crc
+import QAT
 
 def build_packet(msg_type: int, peripheral: int, payload: bytes = b"") -> bytes:
     """
@@ -34,11 +33,49 @@ def build_packet(msg_type: int, peripheral: int, payload: bytes = b"") -> bytes:
 
     size = len(payload)
 
-    frame = [constants.START, msg_type, peripheral, size] +  list(payload)
+    frame = [QAT.START, msg_type, peripheral, size] +  list(payload)
 
-    crc_value = crc.crc_calc(frame)
+    crc_value = QAT.crc_calc(frame)
 
     packet = bytes(frame) + crc_value.to_bytes(2, "big")
 
     return packet
 
+
+def send_packet(ser, msg_type: int, peripheral: int, payload: bytes = b"", max_retries: int = 3) -> dict | None:
+    """
+    Build, send, and validate a packet, retrying on error frames or timeouts.
+
+    Args:
+        ser         : open serial.Serial instance.
+        msg_type    : message type (e.g. TYPE_WRITE).
+        peripheral  : target peripheral (e.g. PERIPHERAL_GPIO).
+        payload     : command-specific data.
+        max_retries : how many attempts before giving up.
+
+    Returns:
+        dict : parsed frame on success, or None if all attempts failed.
+    """
+    packet = build_packet(msg_type, peripheral, payload)
+
+    for attempt in range(1, max_retries + 1):
+        print(f"Attempt {attempt}/{max_retries}...")
+        ser.write(packet)
+        raw = QAT.read_frame(ser)
+
+        if raw is None:
+            print("Timeout — no response received.")
+            continue
+        if not QAT.check_packet(raw):
+            print("CRC error — corrupted frame.")
+            continue
+
+        frame = QAT.parse_packet(raw)
+        if frame["type"] == QAT.TYPE_ERROR:
+            print("ESP32 returned an error frame. Retrying...")
+            continue
+
+        return frame  # success
+
+    print(f"Failed after {max_retries} attempts.")
+    return None

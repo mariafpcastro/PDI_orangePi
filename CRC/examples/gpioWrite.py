@@ -11,14 +11,14 @@ time.sleep(1)
 # NOTE: before any TYPE_WRITE or TYPE_READ command, the pin must be
 # configured via TYPE_CONFIG, otherwise the ESP32 will acknowledge
 # the command but the hardware will not behave as expected.
-packet = QAT.build_packet(QAT.TYPE_CONFIG, QAT.PERIPHERAL_GPIO, QAT.gpio_config_write_payload(4, QAT.CONFIG_OUT_PP_LOW))
-ser.write(packet)
-raw = QAT.read_frame(ser)   # wait for ESP32 to acknowledge before proceeding
+#packet = QAT.build_packet(QAT.TYPE_CONFIG, QAT.PERIPHERAL_GPIO, QAT.gpio_config_write_payload(4, QAT.CONFIG_OUT_PP_LOW))
+#ser.write(packet)
+#raw = QAT.read_frame(ser)   # wait for ESP32 to acknowledge before proceeding
 
 # --- Write pin 4 ---
 type_msg = QAT.TYPE_WRITE
 per_msg = QAT.PERIPHERAL_GPIO
-payload = QAT.gpio_config_write_payload(4, 1)
+payload = QAT.gpio_config_write_payload(12, 1)
 
 packet = QAT.build_packet(type_msg, per_msg, payload)
 ser.write(packet)

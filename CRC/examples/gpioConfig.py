@@ -10,12 +10,15 @@ time.sleep(1)
 # --- Pin 4 configuration ---
 type_msg = QAT.TYPE_CONFIG
 per_msg = QAT.PERIPHERAL_GPIO
-payload = QAT.gpio_config_write_payload(4, QAT.CONFIG_OUT_PP_HIGH)
+payload = QAT.gpio_config_write_payload(12, QAT.CONFIG_IN_NI_NP)
 
 packet = QAT.build_packet(type_msg, per_msg, payload)
 
-packet = packet[:-2] + bytes([0xDE, 0xAD])
+QAT.gpio_check(packet, 3, type_msg)
 
+
+
+'''
 ser.write(packet)
 
 raw = QAT.read_frame(ser)
@@ -27,4 +30,8 @@ elif not QAT.check_packet(raw):
 else:
     frame = QAT.parse_packet(raw)
     QAT.print_frame(frame) # displays the full received frame for debugging
-    QAT.gpio_read(type_msg, frame["payload"])
+
+    if frame ["type"] == QAT.TYPE_ERROR:
+        print(f"ESP32 returned an error frame.")
+    elif frame["type"] == type_msg and frame["size"] >= 2:
+        QAT.gpio_read(type_msg, frame["payload"])'''

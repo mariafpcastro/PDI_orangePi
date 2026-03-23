@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: QAT
+Version: 0.1.0
+Summary: Biblioteca embarcada com dependências dinâmicas
+Author: Seu Nome
+Requires-Python: >=3.7
+Requires-Dist: python-periphery>=2.4.0
+Requires-Dist: requests>=2.28.0
+Requires-Dist: pyserial>=3.5
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
