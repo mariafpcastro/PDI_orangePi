@@ -23,13 +23,14 @@ payload = QAT.gpio_config_write_payload(12, 1)
 packet = QAT.build_packet(type_msg, per_msg, payload)
 ser.write(packet)
 
-raw = QAT.read_frame(ser)
 
-if raw is None:
-    print("Timeout — no response received.")
-elif not QAT.check_packet(raw):
-    print("CRC error — corrupted frame.")
-else:
-    frame = QAT.parse_packet(raw)
-    QAT.print_frame(frame)   # displays the full received frame for debugging
-    QAT.gpio_read(type_msg, frame["payload"])
+QAT.gpio_check(ser, packet, 3, type_msg)
+
+# if raw is None:
+#     print("Timeout — no response received.")
+# elif not QAT.check_packet(raw):
+#     print("CRC error — corrupted frame.")
+# else:
+#     frame = QAT.parse_packet(raw)
+#     QAT.print_frame(frame)   # displays the full received frame for debugging
+#     QAT.gpio_read(type_msg, frame["payload"])

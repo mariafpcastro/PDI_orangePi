@@ -18,7 +18,7 @@ def gpio_config_write_payload(pin: int, value: int) -> bytes:
         TYPE_CONFIG - value should be one of the CONFIG_* constants
                       defined in constants.py
                       e.g. gpio_config_write_payload(4, c.CONFIG_OUT_PP_HIGH)
-        
+
         TYPE_WRITE  - value shoul be the output level:
                       0 = LOW , 1 = HIGH.
                       e.g. gpio_config_write_payload(4, 1)
@@ -48,7 +48,7 @@ def gpio_read(msg_type: int, payload: bytes) -> None:
     if len(payload) < 2:
         print(f"GPIO response error - payload too short ({len(payload)} byte(s)).")
         return
-    
+
     pin = payload[0]
     status = payload[1]
 
@@ -68,9 +68,7 @@ def gpio_read(msg_type: int, payload: bytes) -> None:
         else:
             print(f"GPIO {pin} unknown level: 0x{status:02X}")
 
-def gpio_check(packet, MAX_RETRIES, type_msg):
-    ser = serial.Serial("/dev/ttyUSB0", 1_000_000, timeout=1)
-    time.sleep(1)
+def gpio_check(ser, packet, MAX_RETRIES, type_msg):
 
     for attempt in range(1, MAX_RETRIES + 1):
         print(f"Attempt {attempt}/{MAX_RETRIES}...")
@@ -103,18 +101,15 @@ def gpio_check(packet, MAX_RETRIES, type_msg):
     else:
         print(f"Failed after {MAX_RETRIES} attempts.")
 
-    ser.close()
 
-# def gpio_check(packet, MAX_RETRIES, type_msg):
-#     ser = serial.Serial("/dev/ttyUSB0", 1_000_000, timeout=1)
-#     time.sleep(1)
-
-#     1. Envia a configuração com retry
-#     configured = False
+# def gpio_check(ser, packet, MAX_RETRIES, type_msg):
 #     for attempt in range(1, MAX_RETRIES + 1):
-#         print(f"Config attempt {attempt}/{MAX_RETRIES}...")
-#         ser.write(packet)
-#         raw = QAT.read_frame(ser)
+#         print(f"Attempt {attempt}/{MAX_RETRIES}...")
+
+#         # Na primeira tentativa usa o raw já recebido, depois reenvia
+#         if attempt > 1:
+#             ser.write(packet)
+#             raw = QAT.read_frame(ser)
 
 #         if raw is None:
 #             print("Timeout — no response received.")
@@ -132,31 +127,8 @@ def gpio_check(packet, MAX_RETRIES, type_msg):
 #         if frame["size"] >= 2 and frame["payload"][1] == QAT.STATUS_FAIL:
 #             print("ESP32 reported failure. Retrying...")
 #             continue
-
-#         print("Configured! Listening for events...")
-#         configured = True
-#         break
-
-#     if not configured:
-#         print(f"Failed to configure after {MAX_RETRIES} attempts.")
-#         ser.close()
-#         return
-
-#     2. Fica escutando eventos indefinidamente
-#     try:
-#         while True:
-#             raw = QAT.read_frame(ser)
-#             if raw is None:
-#                 continue  # timeout normal, continua esperando
-#             if not QAT.check_packet(raw):
-#                 print("CRC error — corrupted frame.")
-#                 continue
-
-#             frame = QAT.parse_packet(raw)
-#             if frame["size"] >= 2:
-#                 QAT.gpio_read(type_msg, frame["payload"])
-
-#     except KeyboardInterrupt:
-#         print("\nStopped by user.")
-#     finally:
-#         ser.close()
+#         if frame["size"] >= 2:
+#             QAT.gpio_read(type_msg, frame["payload"])
+#             break
+#     else:
+#         print(f"Failed after {MAX_RETRIES} attempts.")

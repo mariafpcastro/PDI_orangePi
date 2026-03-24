@@ -21,12 +21,5 @@ per_msg = QAT.PERIPHERAL_GPIO
 
 packet = QAT.build_packet(type_msg, per_msg, b"\x0C")
 ser.write(packet)
-raw = QAT.read_frame(ser)
 
-if raw is None:
-    print("Timeout — no response received.")
-elif not QAT.check_packet(raw):
-    print("CRC error — corrupted frame.")
-else:
-    frame = QAT.parse_packet(raw)
-    QAT.gpio_check(raw, 3, type_msg)
+QAT.gpio_check(ser, packet, 3, type_msg)
