@@ -18,7 +18,6 @@ _print_lock = threading.Lock()
 # Guarda o prompt que está aguardando input no momento (pode ser "")
 _current_prompt = ""
 
-
 def _safe_print(*args, **kwargs) -> None:
     """
     Imprime algo no terminal sem embaralhar o prompt do usuário:
@@ -166,7 +165,11 @@ def build_payload(per_msg: int, type_msg: int) -> bytes:
     elif per_msg == QAT.PERIPHERAL_GPIO and type_msg == QAT.TYPE_WRITE:
         pin   = int(input("Número do pino: "))
         level = int(input("Nível (0 = OFF, 1 = ON): "))
-        return bytes([pin, level])
+        return QAT.gpio_config_write_payload(pin, level)
+    
+    elif per_msg == QAT.PERIPHERAL_GPIO and type_msg == QAT.TYPE_READ:
+        pin   = int(input("Número do pino: "))
+        return bytes ([pin])
 
     else:
         size = int(input("Tamanho do payload: "))

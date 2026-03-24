@@ -26,7 +26,7 @@ def crc_calc(data) -> int:
 		data (list[int] | bytes): Sequence of bytes to checksum.
 	
 	Returns
-		int: Computed CRC-16 value (16 bits).
+		int: Computed CRC-16 value (16-bit unsigned integer).
 	"""
 
 	crc = constants.CRCBEGIN
@@ -44,6 +44,3 @@ def crc_calc(data) -> int:
 			crc &= 0xFFFF
 
 	return crc
-
-	def crc_to_bytes():
-		return 0

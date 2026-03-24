@@ -4,8 +4,6 @@ gpio.py
 Utilities for building and interpreting GPIO protocol messages.
 """
 
-from ..protocol import constants as c
-import serial, time
 import QAT
 
 
@@ -17,7 +15,7 @@ def gpio_config_write_payload(pin: int, value: int) -> bytes:
 
         TYPE_CONFIG - value should be one of the CONFIG_* constants
                       defined in constants.py
-                      e.g. gpio_config_write_payload(4, c.CONFIG_OUT_PP_HIGH)
+                      e.g. gpio_config_write_payload(4, QAT.CONFIG_OUT_PP_HIGH)
 
         TYPE_WRITE  - value shoul be the output level:
                       0 = LOW , 1 = HIGH.
@@ -52,15 +50,15 @@ def gpio_read(msg_type: int, payload: bytes) -> None:
     pin = payload[0]
     status = payload[1]
 
-    if msg_type in (c.TYPE_CONFIG, c.TYPE_WRITE):
-        if status == c.STATUS_OK:
+    if msg_type in (QAT.TYPE_CONFIG, QAT.TYPE_WRITE):
+        if status == QAT.STATUS_OK:
             print(f"GPIO {pin} configured successfully.")
-        elif status == c.STATUS_FAIL:
+        elif status == QAT.STATUS_FAIL:
             print(f"GPIO {pin} configuration failed.")
         else:
             print(f"GPIO {pin} unknown status: 0x{status:02X}")
 
-    elif msg_type in (c.TYPE_READ, c.TYPE_EVENT) :
+    elif msg_type in (QAT.TYPE_READ, QAT.TYPE_EVENT) :
         if status == 0x01:
             print(f"GPIO {pin} — logic level HIGH")
         elif status == 0x00:
@@ -69,6 +67,18 @@ def gpio_read(msg_type: int, payload: bytes) -> None:
             print(f"GPIO {pin} unknown level: 0x{status:02X}")
 
 def gpio_check(ser, packet, MAX_RETRIES, type_msg):
+    """
+    Send a packet and validate the response, retrying on failure
+    
+    Args:
+        ser         (serial.Serial): Open serial port instance.
+        packet      (bytes):         Encoded packet to send.
+        MAX_RETRIES (int):           Maximum number of attempts.
+        type_msg    (int):           Message type used to interpret the GPIO response
+    
+    Returns:
+        None
+    """
 
     for attempt in range(1, MAX_RETRIES + 1):
         print(f"Attempt {attempt}/{MAX_RETRIES}...")
@@ -100,35 +110,3 @@ def gpio_check(ser, packet, MAX_RETRIES, type_msg):
 
     else:
         print(f"Failed after {MAX_RETRIES} attempts.")
-
-
-# def gpio_check(ser, packet, MAX_RETRIES, type_msg):
-#     for attempt in range(1, MAX_RETRIES + 1):
-#         print(f"Attempt {attempt}/{MAX_RETRIES}...")
-
-#         # Na primeira tentativa usa o raw já recebido, depois reenvia
-#         if attempt > 1:
-#             ser.write(packet)
-#             raw = QAT.read_frame(ser)
-
-#         if raw is None:
-#             print("Timeout — no response received.")
-#             continue
-#         if not QAT.check_packet(raw):
-#             print("CRC error — corrupted frame. Retrying...")
-#             continue
-
-#         frame = QAT.parse_packet(raw)
-#         QAT.print_frame(frame)
-
-#         if frame["type"] == QAT.TYPE_ERROR:
-#             print("ESP32 returned an error frame. Retrying...")
-#             continue
-#         if frame["size"] >= 2 and frame["payload"][1] == QAT.STATUS_FAIL:
-#             print("ESP32 reported failure. Retrying...")
-#             continue
-#         if frame["size"] >= 2:
-#             QAT.gpio_read(type_msg, frame["payload"])
-#             break
-#     else:
-#         print(f"Failed after {MAX_RETRIES} attempts.")

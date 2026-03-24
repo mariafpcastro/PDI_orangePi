@@ -1,36 +1,26 @@
 import serial
 import time
-
 import QAT
 
 # --- Serial setup ---
+# Open the serial port where the ESP32 is connected.
+# Adjust the port name and baud rate to match your setup.
 ser = serial.Serial("/dev/ttyUSB0", 1_000_000, timeout=1)
 time.sleep(1)
 
-# --- Pin configuration ---
-# NOTE: before any TYPE_WRITE or TYPE_READ command, the pin must be
-# configured via TYPE_CONFIG, otherwise the ESP32 will acknowledge
-# the command but the hardware will not behave as expected.
-#packet = QAT.build_packet(QAT.TYPE_CONFIG, QAT.PERIPHERAL_GPIO, QAT.gpio_config_write_payload(4, QAT.CONFIG_OUT_PP_LOW))
-#ser.write(packet)
-#raw = QAT.read_frame(ser)   # wait for ESP32 to acknowledge before proceeding
-
-# --- Write pin 4 ---
-type_msg = QAT.TYPE_WRITE
-per_msg = QAT.PERIPHERAL_GPIO
+# --- Write pin 12 ---
+# NOTE: pin must be configured via TYPE_CONFIG before any TYPE_WRITE command.
+#
+# Build the payload with the pin number and the desired output level.
+# Second argument: 1 = HIGH, 0 = LOW.
 payload = QAT.gpio_config_write_payload(12, 1)
 
-packet = QAT.build_packet(type_msg, per_msg, payload)
-ser.write(packet)
+# Send the write packet and wait for the ESP32 response.
+# send_packet handles building, sending, CRC validation and retries automatically.
+frame = QAT.send_packet(ser, QAT.TYPE_WRITE, QAT.PERIPHERAL_GPIO, payload, max_retries=3)
 
-
-QAT.gpio_check(ser, packet, 3, type_msg)
-
-# if raw is None:
-#     print("Timeout — no response received.")
-# elif not QAT.check_packet(raw):
-#     print("CRC error — corrupted frame.")
-# else:
-#     frame = QAT.parse_packet(raw)
-#     QAT.print_frame(frame)   # displays the full received frame for debugging
-#     QAT.gpio_read(type_msg, frame["payload"])
+if frame:
+    QAT.print_frame(frame)                          # Print the full raw frame for debugging
+    QAT.gpio_read(QAT.TYPE_WRITE, frame["payload"]) # Interpret and display the ESP32 status
+else:
+    print("Write failed after all retries.")

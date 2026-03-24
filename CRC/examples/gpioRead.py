@@ -1,25 +1,22 @@
 import serial
 import time
-
 import QAT
 
 # --- Serial setup ---
+# Open the serial port where the ESP32 is connected.
+# Adjust the port name and baud rate to match your setup.
 ser = serial.Serial("/dev/ttyUSB0", 1_000_000, timeout=1)
 time.sleep(1)
 
-# --- Pin 4 configuration ---
-# NOTE: before any TYPE_WRITE or TYPE_READ command, the pin must be
-# configured via TYPE_CONFIG, otherwise the ESP32 will acknowledge
-# the comman but the hardware will not behave as expected.
-# packet = QAT.build_packet(QAT.TYPE_CONFIG, QAT.PERIPHERAL_GPIO, QAT.gpio_config_write_payload(12, QAT.CONFIG_IN_NI_NP))
-# ser.write(packet)
-# QAT.read_frame(ser)
+# --- Read pin 12 ---
+# NOTE: pin must be configured via TYPE_CONFIG before any TYPE_READ command.
+#
+# The payload for a read command is just the pin number as a single byte.
+# Replace 0x0C (decimal 12) with the pin number you want to read.
+frame = QAT.send_packet(ser, QAT.TYPE_READ, QAT.PERIPHERAL_GPIO, b"\x0C", max_retries=3)
 
-# --- Read pin 4 ---
-type_msg = QAT.TYPE_READ
-per_msg = QAT.PERIPHERAL_GPIO
-
-packet = QAT.build_packet(type_msg, per_msg, b"\x0C")
-ser.write(packet)
-
-QAT.gpio_check(ser, packet, 3, type_msg)
+if frame:
+    QAT.print_frame(frame)                         # Print the full raw frame for debugging
+    QAT.gpio_read(QAT.TYPE_READ, frame["payload"]) # Interpret and display the pin level (HIGH/LOW)
+else:
+    print("Read failed after all retries.")

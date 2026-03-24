@@ -10,8 +10,7 @@ Responsibilities:
     - Display a received frame in a readable format
 """
 
-from . import constants
-from . import crc
+import QAT
 
 def read_frame(ser) -> bytes | None:
     """
@@ -32,7 +31,7 @@ def read_frame(ser) -> bytes | None:
         byte = ser.read(1)
         if not byte:
             return None
-        if byte[0] == constants.START:
+        if byte[0] == QAT.START:
             break
 
     # Read TYPE, PERIPHERAL and SIZE
@@ -47,7 +46,7 @@ def read_frame(ser) -> bytes | None:
     if len(body) < size + 2:
         return None
 
-    return bytes([constants.START]) + header + body
+    return bytes([QAT.START]) + header + body
 
 
 def parse_packet(data: bytes) -> dict:
@@ -97,7 +96,7 @@ def check_packet(data: bytes) -> bool:
     size = data[3]
     frame_body = data[:4 + size]
     received_crc = int.from_bytes(data[4 + size:], "big")
-    computed_crc = crc.crc_calc(frame_body)
+    computed_crc = QAT.crc_calc(frame_body)
 
     return computed_crc == received_crc
 
